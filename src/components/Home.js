@@ -1,21 +1,21 @@
 import React, {Component} from "react";
 import axios from "axios";
+import PropTypes from 'prop-types'
 import { Dropdown, InputGroup, FormControl,
     Col, Button, Row, Container } from 'react-bootstrap';
 import BootstrapTable from 'react-bootstrap-table-next';
 import paginationFactory from 'react-bootstrap-table2-paginator';
 import { Link } from "react-router-dom";
+import ACTIONS from "../modules/action";
+import { connect } from "react-redux";
 
-class App extends Component {
+class Home extends Component {
+    static propTypes = {
+        addBanks: PropTypes.func.isRequired,
+        cities: PropTypes.object.isRequired
+    }
     constructor(){
         super();
-        this.cities = [{
-            city: 'MUMBAI',
-            banks: []
-        },{
-            city: 'CHENNAI',
-            banks: []
-        }]
         this.sizePerPageList = [{
             text: '5', value: 5
         }, {
@@ -24,10 +24,15 @@ class App extends Component {
             text: '20', value: 20
         }]
         this.state={
-            selectedCity: 'Select City',
+            selectedCity: '',
             filteredBanks: [],
             favouriteBanks: []
         }
+    }
+    componentDidMount() {
+        this.setState({selectedCity: this.props.selectedCity})
+        this.props.selectedCity !== 'Select City' && this.getBanks(this.props.selectedCity)
+        this.setState({favouriteBanks: JSON.parse(localStorage.getItem('favouriteBanks'))})
     }
     filterBanksBasedOnPagination(filteredBanks) {
         var startItem = 0
@@ -36,30 +41,35 @@ class App extends Component {
         this.setState({filteredBanks: filteredBanksByPagination})
     }
     markFaviourites(banks){
-        this.setState({favouriteBanks: JSON.parse(localStorage.getItem('favouriteBanks'))})
-        this.state.favouriteBanks.map(favouriteBank => {
-            banks.map(bank => {
-                if(bank.ifsc === favouriteBank.ifsc )
-                    bank.favourite = true;
+        var tempFavouriteBanks = JSON.parse(localStorage.getItem('favouriteBanks'))
+        if (tempFavouriteBanks) {
+            this.setState({favouriteBanks: tempFavouriteBanks})
+            this.state.favouriteBanks.map(favouriteBank => {
+                banks.map(bank => {
+                    if(bank.ifsc === favouriteBank.ifsc )
+                        bank.favourite = true;
+                })
             })
-        })
+        }
     }
     getBanks(city) {
-        var selectedCityObj = this.cities.filter(cityObj => {return cityObj.city === city})[0]   
+        var selectedCityObj = this.props.cities.filter(cityObj => {return cityObj.city === city})[0]   
         if(selectedCityObj.banks.length === 0) {
             axios.get("https://vast-shore-74260.herokuapp.com/banks?city="+city).then((res)=>{
                 //on success
                 this.markFaviourites(res.data)
-                selectedCityObj.banks=res.data
+                var retrivedBanks = {
+                    city: city,
+                    banks: res.data
+                }
+                this.props.addBanks(retrivedBanks)
                 this.setState({filteredBanks: res.data})
-                // this.filterBanksBasedOnPagination(res.data)
             }).catch((error)=>{
                 //on error
                 console.log(error)
             });
         } else {
            this.setState({filteredBanks: selectedCityObj.banks})
-            // this.filterBanksBasedOnPagination(selectedCityObj.banks)
         }
     }
     handleSearchBoxChange(event){
@@ -67,7 +77,7 @@ class App extends Component {
         console.log(event.key)
         if(event.key === 'Enter') {
             var enteredKey = event.target.value;
-            var selectedCityObj = this.cities.filter(cityObj => {return cityObj.city === this.state.selectedCity})[0]  
+            var selectedCityObj = this.props.cities.filter(cityObj => {return cityObj.city === this.state.selectedCity})[0]  
             if (selectedCityObj) {
                 if(enteredKey !== ''){
                     var tempFilteredBanks = selectedCityObj.banks.filter(bankObj => {
@@ -89,6 +99,7 @@ class App extends Component {
         if(savedBank.favourite) {
             this.state.favouriteBanks.push(savedBank)
         } else {
+            console.log(this.state.favouriteBanks)
             var bankIndex = this.state.favouriteBanks.findIndex(bank => bank.ifsc === event.target.value)
             console.log(bankIndex)
             console.log(event.target.value)
@@ -101,19 +112,20 @@ class App extends Component {
         // if(!filteredBank){
 
         // }
-        console.log(this.state.favouriteBanks)
-        localStorage.setItem('favouriteBanks', JSON.stringify(this.state.favouriteBanks))
         var tempState = {...this.state}
         this.setState({tempState})
+        console.log(this.state.favouriteBanks)
+        localStorage.setItem('favouriteBanks', JSON.stringify(this.state.favouriteBanks))
     }
-    handleDropdownChange(selectedItem) {
-        console.log(selectedItem)
-        this.setState({selectedCity: selectedItem})
-        this.getBanks(selectedItem)
+    handleDropdownChange(selectedCity) {
+        console.log(selectedCity)
+        this.setState({selectedCity: selectedCity})
+        this.props.setSelectedCity(selectedCity)
+        this.getBanks(selectedCity)
     }
     renderCityOptions() {
         console.log(this.state)
-        return this.cities.map( city => {
+        return this.props.cities.map( city => {
             return (<Dropdown.Item onSelect={(item)=>this.handleDropdownChange(item)} eventKey={city.city}>{city.city}</Dropdown.Item>)
         })
     }
@@ -122,28 +134,6 @@ class App extends Component {
             Showing { from } to { to } of { size } Results
         </span>
     )
-    renderBanks(){
-        return this.state.filteredBanks.map(bank => {
-            return (
-                <tr>
-                    <td>
-                        <Button value={bank.ifsc} variant={bank.favourite?"primary":"outline-primary"}
-                            onClick={(item)=>this.handleFavouriteChange(item)}>
-                            Favourite
-                        </Button>
-                    </td>
-                    <td>{bank.bank_id}</td>
-                    <td>{bank.bank_name}</td>
-                    <td>{bank.ifsc}</td>
-                    <td>{bank.branch}</td>
-                    <td>{bank.address}</td>
-                    <td>{bank.city}</td>
-                    <td>{bank.district}</td>
-                    <td>{bank.state}</td>
-                </tr>
-            )
-        })
-    }
     favouriteButton(bank, index){
         return <Button value={bank.ifsc} variant={bank.favourite?"primary":"outline-primary"}
                 onClick={(item)=>this.handleFavouriteChange(item)}>
@@ -155,18 +145,10 @@ class App extends Component {
         var options = {
             paginationSize: 4,
             pageStartIndex: 0,
-            // alwaysShowAllBtns: true, // Always show next and previous button
-            // withFirstAndLast: false, // Hide the going to First and Last page button
-            // hideSizePerPage: true, // Hide the sizePerPage dropdown always
-            // hidePageListOnlyOnePage: true, // Hide the pagination list when only one page
             firstPageText: 'First',
             prePageText: 'Back',
             nextPageText: 'Next',
             lastPageText: 'Last',
-            nextPageTitle: 'First page',
-            prePageTitle: 'Pre page',
-            firstPageTitle: 'Next page',
-            lastPageTitle: 'Last page',
             showTotal: true,
             paginationTotalRenderer: this.customTotal,
             sizePerPageList: this.sizePerPageList
@@ -245,24 +227,6 @@ class App extends Component {
                         <Link to={`/favourite`}><Button variant="outline-primary">Favourites</Button></Link>
                     </Col>
                 </Row>
-                {/* <Table striped bordered hover>
-                    <thead>
-                        <tr>
-                            <th>Favourite</th>
-                            <th>Bank ID</th>
-                            <th>Bank Name</th>
-                            <th>IFSC</th>
-                            <th>Branch</th>
-                            <th>Address</th>
-                            <th>City</th>
-                            <th>District</th>
-                            <th>State</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {this.renderBanks()}
-                    </tbody>
-                </Table> */}
 
                 <BootstrapTable 
                     keyField='ifsc' 
@@ -275,4 +239,17 @@ class App extends Component {
     }
 }
 
-export default App;
+const mapStateToProps = state => ({
+    cities: state.cities,
+    selectedCity: state.selectedCity
+});
+
+const mapDispatchToProps = dispatch => ({
+    addBanks: banks => dispatch(ACTIONS.addBanks(banks)),
+    setSelectedCity: city => dispatch(ACTIONS.setSelectedCity(city))
+});
+
+export default connect(
+    mapStateToProps,
+    mapDispatchToProps
+)(Home);
