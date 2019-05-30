@@ -13,8 +13,9 @@ class Favourite extends Component {
         }, {
             text: '10', value: 10
         }]
+        var tempFavouriteBanks = JSON.parse(localStorage.getItem('favouriteBanks'))
         this.state={
-            favouriteBanks: JSON.parse(localStorage.getItem('favouriteBanks'))
+            favouriteBanks: tempFavouriteBanks || []
         }
     }
     customTotal = (from, to, size) => (
