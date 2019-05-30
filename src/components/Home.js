@@ -23,16 +23,44 @@ class Home extends Component {
         }, {
             text: '20', value: 20
         }]
+        this.bankProperties = [{
+              dataField: "bank_name",
+              text: "Bank Name"
+            },
+            {
+              dataField: "ifsc",
+              text: "IFSC"
+            },
+            {
+              dataField: "branch",
+              text: "Branch"
+            },
+            {
+              dataField: "address",
+              text: "Address"
+            },
+            {
+              dataField: "district",
+              text: "District"
+            },
+            {
+              dataField: "state",
+              text: "State"
+            }
+        ]
         this.state={
             selectedCity: '',
             filteredBanks: [],
-            favouriteBanks: []
+            favouriteBanks: [],
+            selectedFilter: '',
+            selectedFilterName: 'Select Filter'
         }
     }
     componentDidMount() {
         this.setState({selectedCity: this.props.selectedCity})
         this.props.selectedCity !== 'Select City' && this.getBanks(this.props.selectedCity)
-        this.setState({favouriteBanks: JSON.parse(localStorage.getItem('favouriteBanks'))})
+        var tempFavouriteBanks = JSON.parse(localStorage.getItem('favouriteBanks'))
+        tempFavouriteBanks && this.setState({favouriteBanks: tempFavouriteBanks})
     }
     filterBanksBasedOnPagination(filteredBanks) {
         var startItem = 0
@@ -73,21 +101,17 @@ class Home extends Component {
         }
     }
     handleSearchBoxChange(event){
-        console.log(event.target.keyCode)
-        console.log(event.key)
-        if(event.key === 'Enter') {
+        if(event.key === 'Enter' && this.state.selectedFilter !== '') {
             var enteredKey = event.target.value;
             var selectedCityObj = this.props.cities.filter(cityObj => {return cityObj.city === this.state.selectedCity})[0]  
             if (selectedCityObj) {
                 if(enteredKey !== ''){
                     var tempFilteredBanks = selectedCityObj.banks.filter(bankObj => {
                         var regexExp = new RegExp(enteredKey, 'i')
-                        return bankObj.ifsc.match(regexExp)})
+                        return bankObj[this.state.selectedFilter].match(regexExp)})
                     this.setState({filteredBanks: tempFilteredBanks})
-                    // this.filterBanksBasedOnPagination(tempFilteredBanks)
                 } else {
                     this.setState({filteredBanks: selectedCityObj.banks})
-                    // this.filterBanksBasedOnPagination(selectedCityObj.banks)
                 }
             }
         }
@@ -95,38 +119,34 @@ class Home extends Component {
     handleFavouriteChange(event){
         var savedBank = this.state.filteredBanks.filter(bankObj => {return bankObj.ifsc === event.target.value})[0]
         savedBank.favourite = !savedBank.favourite;
-        console.log(savedBank.favourite)
         if(savedBank.favourite) {
             this.state.favouriteBanks.push(savedBank)
         } else {
-            console.log(this.state.favouriteBanks)
             var bankIndex = this.state.favouriteBanks.findIndex(bank => bank.ifsc === event.target.value)
-            console.log(bankIndex)
-            console.log(event.target.value)
             this.state.favouriteBanks.splice(bankIndex, 1)
         }
-        // var favouriteBanks = JSON.parse(localStorage.getItem('favouriteBanks'))
-        // var filteredBank = favouriteBanks.filter(bank => {
-        //     return bank.ifsc === savedBank.ifsc
-        // })[0]
-        // if(!filteredBank){
-
-        // }
         var tempState = {...this.state}
         this.setState({tempState})
-        console.log(this.state.favouriteBanks)
         localStorage.setItem('favouriteBanks', JSON.stringify(this.state.favouriteBanks))
     }
-    handleDropdownChange(selectedCity) {
-        console.log(selectedCity)
+    handleCityDropdownChange(selectedCity) {
         this.setState({selectedCity: selectedCity})
         this.props.setSelectedCity(selectedCity)
         this.getBanks(selectedCity)
     }
     renderCityOptions() {
-        console.log(this.state)
         return this.props.cities.map( city => {
-            return (<Dropdown.Item onSelect={(item)=>this.handleDropdownChange(item)} eventKey={city.city}>{city.city}</Dropdown.Item>)
+            return (<Dropdown.Item onSelect={(item)=>this.handleCityDropdownChange(item)} eventKey={city.city}>{city.city}</Dropdown.Item>)
+        })
+    }
+    handleFilterDropdownChange(selectedFilter, event, c, d){
+        console.log(selectedFilter, event.target.innerHTML)
+        this.setState({selectedFilter: selectedFilter})
+        this.setState({selectedFilterName: event.target.innerHTML})
+    }
+    renderFilterOptions() {
+        return this.bankProperties.map( field => {
+            return (<Dropdown.Item onSelect={(item, event)=>this.handleFilterDropdownChange(item, event)} eventKey={field.dataField}>{field.text}</Dropdown.Item>)
         })
     }
     customTotal = (from, to, size) => (
@@ -162,44 +182,44 @@ class Home extends Component {
               formatter: (a, obj, index)=>{return this.favouriteButton(obj, index)},
             },
             {
-              dataField: "bank_id",
-              text: "Bank ID",
-              sort: true
+                dataField: "bank_id",
+                text: "Bank ID",
+                sort: true
             },
             {
-              dataField: "bank_name",
-              text: "Bank Name",
-              sort: true
+                dataField: "bank_name",
+                text: "Bank Name",
+                sort: true
             },
             {
-              dataField: "ifsc",
-              text: "IFSC",
-              sort: true
+                dataField: "ifsc",
+                text: "IFSC",
+                sort: true
             },
             {
-              dataField: "branch",
-              text: "Branch",
-              sort: true
+                dataField: "branch",
+                text: "Branch",
+                sort: true
             },
             {
-              dataField: "address",
-              text: "Address",
-              sort: true
+                dataField: "address",
+                text: "Address",
+                sort: true
             },
             {
-              dataField: "city",
-              text: "City",
-              sort: true
+                dataField: "city",
+                text: "City",
+                sort: true
             },
             {
-              dataField: "district",
-              text: "District",
-              sort: true
+                dataField: "district",
+                text: "District",
+                sort: true
             },
             {
-              dataField: "state",
-              text: "State",
-              sort: true
+                dataField: "state",
+                text: "State",
+                sort: true
             }
         ]
         
@@ -214,16 +234,31 @@ class Home extends Component {
                             <Dropdown.Menu >{this.renderCityOptions()}</Dropdown.Menu>
                         </Dropdown>
                     </Col>
-                    <Col lg="6">
-                        <InputGroup className="mb-3">
-                            <FormControl
-                            placeholder="Search..."
-                            aria-label="Search"
-                            onKeyPress={(item)=>this.handleSearchBoxChange(item)}
-                            />
-                        </InputGroup>
+                    <Col lg="8">
+                    <Row>
+                        <Col lg="1">
+                            Search By:
+                        </Col>
+                        <Col lg="3">
+                            <Dropdown>
+                                <Dropdown.Toggle variant="success" id="city-dropdown">
+                                    {this.state.selectedFilterName}
+                                </Dropdown.Toggle>
+                                <Dropdown.Menu >{this.renderFilterOptions()}</Dropdown.Menu>
+                            </Dropdown>
+                        </Col>
+                        <Col lg="8">
+                            <InputGroup className="mb-3">
+                                <FormControl
+                                placeholder="Search..."
+                                aria-label="Search"
+                                onKeyPress={(item)=>this.handleSearchBoxChange(item)}
+                                />
+                            </InputGroup>
+                        </Col>
+                    </Row>
                     </Col>
-                    <Col lg="4" className="ml-0">
+                    <Col lg="2" className="ml-0">
                         <Link to={`/favourite`}><Button variant="outline-primary">Favourites</Button></Link>
                     </Col>
                 </Row>
