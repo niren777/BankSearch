@@ -8,6 +8,15 @@ const defaultState = {
   },{
     city: 'CHENNAI',
     banks: []
+  },{
+    city: 'KOLKATA',
+    banks: []
+  },{
+    city: 'BANGALORE',
+    banks: []
+  },{
+    city: 'DELHI',
+    banks: []
   }],
   selectedCity: 'Select City'
 };
